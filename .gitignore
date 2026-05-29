@@ -1,0 +1,5 @@
+Plaintext
+node_modules/
+clinica.db
+npm-debug.log
+.DS_Store
