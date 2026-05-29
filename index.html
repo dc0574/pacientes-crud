@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro de Pacientes</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; color: #333; max-width: 600px; margin: 40px auto; padding: 20px; }
+        .card { background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h2 { margin-top: 0; color: #1a73e8; }
+        form { display: flex; flex-direction: column; gap: 15px; }
+        input { padding: 12px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; }
+        button { padding: 12px; font-size: 16px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; }
+        .btn-salvar { background-color: #1a73e8; }
+        .btn-editar { background-color: #f0ad4e; padding: 8px; font-size: 14px; margin-right: 5px; }
+        .btn-excluir { background-color: #d9534f; padding: 8px; font-size: 14px; }
+        .btn-exportar { background-color: #28a745; width: 100%; margin-bottom: 15px; }
+        .btn-exportar:hover { background-color: #218838; }
+        ul { list-style-type: none; padding: 0; }
+        li { background: white; margin: 10px 0; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
+        .whatsapp-tag { background-color: #25D366; color: white; padding: 5px 10px; border-radius: 20px; font-size: 14px; font-weight: bold; margin-right: 15px;}
+        .acoes { display: flex; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>Adicionar Novo Paciente</h2>
+        <form id="pacienteForm">
+            <input type="hidden" id="pacienteId">
+            <input type="text" id="nome" placeholder="Nome Completo do Paciente" required>
+            <input type="text" id="whatsapp" placeholder="WhatsApp (ex: 21 99999-9999)" required>
+            <button type="submit" class="btn-salvar" id="btnSubmit">Cadastrar Paciente</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Pacientes Cadastrados</h2>
+        <button class="btn-exportar" onclick="exportarExcel()">Baixar Planilha Excel 📊</button>
+        <ul id="listaPacientes"></ul>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api/pacientes';
+
+        async function carregarPacientes() {
+            try {
+                const resposta = await fetch(API_URL);
+                const pacientes = await resposta.json();
+                const lista = document.getElementById('listaPacientes');
+                lista.innerHTML = ''; 
+                
+                pacientes.forEach(paciente => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <div>
+                            <strong>${paciente.nome_completo}</strong><br>
+                            <span class="whatsapp-tag">📱 ${paciente.whatsapp}</span>
+                        </div>
+                        <div class="acoes">
+                            <button class="btn-editar" onclick="prepararEdicao(${paciente.id}, '${paciente.nome_completo}', '${paciente.whatsapp}')">Editar</button>
+                            <button class="btn-excluir" onclick="deletarPaciente(${paciente.id})">Excluir</button>
+                        </div>
+                    `;
+                    lista.appendChild(li);
+                });
+            } catch (error) {
+                console.log("Servidor offline no momento.");
+            }
+        }
+
+        async function deletarPaciente(id) {
+            if(confirm('Tem certeza que deseja excluir este paciente?')) {
+                await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+                carregarPacientes();
+            }
+        }
+
+        function prepararEdicao(id, nome, whatsapp) {
+            document.getElementById('pacienteId').value = id;
+            document.getElementById('nome').value = nome;
+            document.getElementById('whatsapp').value = whatsapp;
+            document.getElementById('btnSubmit').innerText = 'Atualizar Paciente';
+            document.getElementById('btnSubmit').style.backgroundColor = '#f0ad4e';
+        }
+
+        document.getElementById('pacienteForm').addEventListener('submit', async (evento) => {
+            evento.preventDefault();
+            
+            const id = document.getElementById('pacienteId').value;
+            const nome_completo = document.getElementById('nome').value;
+            const whatsapp = document.getElementById('whatsapp').value;
+
+            if (id) {
+                await fetch(`${API_URL}/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nome_completo, whatsapp })
+                });
+            } else {
+                await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nome_completo, whatsapp })
+                });
+            }
+
+            document.getElementById('pacienteId').value = '';
+            document.getElementById('nome').value = '';
+            document.getElementById('whatsapp').value = '';
+            carregarPacientes(); 
+        });
+
+        function exportarExcel() {
+            window.location.href = API_URL + '/exportar';
+        }
+
+        carregarPacientes();
+    </script>
+</body>
+</html>
